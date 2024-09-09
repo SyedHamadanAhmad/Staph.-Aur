@@ -29,6 +29,7 @@ def create_feature_vector(row, n, feature_vector):
 
 def preprocess_data():
     df=pd.read_csv('./db.csv')
+    original=df
     df=df.iloc[:111]
 
     df=df.drop(['Entry','Reviewed', 'Entry Name', 'Gene Names', 'Gene Ontology (biological process)', 'Gene Ontology (molecular function)'], axis=1)
@@ -53,7 +54,7 @@ def preprocess_data():
     df=df.drop(['Sequence', 'Organism'], axis=1)
     enc=OneHotEncoder(sparse_output=False, handle_unknown='ignore')
     df['Protein names']=enc.fit_transform(np.array(df['Protein names']).reshape(-1,1))
-    return df, proteins, sequences, feature_vector
+    return original,df, proteins, sequences, feature_vector
 
 
 
@@ -85,33 +86,61 @@ def predict(prediction_sequence, seq_length, svc):
     return protein
 
 
+def similarity_search(target_sequence, protein, df):
+    # Fetch the protein sequences for the specified protein name
+    a = proteins.loc[proteins['Protein names'] == protein]
+    sequences_list = a['Sequence']
+    sequences_list = sequences_list.to_numpy()
 
-def similarity_search(target_sequence, protein):
-    a=proteins.loc[proteins['Protein names']==protein]
-    sequences_list=a['Sequence']
-    sequences_list=sequences_list.to_numpy()
     def similarity(seq1, seq2):
         """Calculate similarity score using SequenceMatcher."""
         return SequenceMatcher(None, seq1, seq2).ratio()
 
     # Calculate similarity for each sequence in the list
     similarities = [(seq, similarity(target_sequence, seq) * 100) for seq in sequences_list]
-    
+
     # Sort the list based on similarity scores in descending order
     similarities.sort(key=lambda x: x[1], reverse=True)
+
+    # Get the top N most similar sequences
+    top_similar_sequences = [seq[0] for seq in similarities[:5]]
+
+    # Call getNames function to get the corresponding names for the top sequences
+    sequence_names = getNames(top_similar_sequences, df)
+
+    # Combine names with similarity scores for output
+    result = [(seq, name, score) for (seq, score), name in zip(similarities[:5], sequence_names)]
+
+    return result
+
+
+def getNames(protein_names, df):
+    names = []
     
-    # Return the top N most similar sequences with their percentage match
-    return similarities[:5]
+    # Iterate through each row of the DataFrame
+    for index, row in df.iterrows():
+        # Extract sequence and name from the DataFrame
+        sequence = row['Sequence']  # Assuming the sequence is in a column named 'Sequence'
+        name = row['Protein names']  # Assuming the name is in a column named 'Protein names'
+
+        # Check if the sequence is in the protein_names list
+        if sequence in protein_names:
+            # If sequence matches, add the corresponding name to the list
+            names.append(name)
+    
+    # Return the list of matching protein names
+    return names
 
 
-df, proteins, sequences, feature_vector=preprocess_data()
+original, df, proteins, sequences, feature_vector=preprocess_data()
 y_pred, y_test, svc=train_model(df)
-
 prediction_sequence="MKTKKQALKWILNTIGQGIDWDKMYGFQCMDLVVAYLYYVTDGKIAMWGNAIDAPKNNFKGTAKVIKNYPAFRPEEGDIVVWSYGNFSTYGHIAVVIDGDPYGDLQYITVAEQNWNGLGLYKQEVTTKRIHNYDGVSHFIRPKFKKTAKKEDNTPTKEKNNKKTKGKKLKVSTQRINYTMDKRGYKPKFVVIHNDAGSSSAQQYEQGLKNAGYSRYAQGVAHAYASDGYVWEAISEDRIAWHTGDGTNPGTGNFEGYGIEVCQSLGDRNTFLKNEQTVFQFIAEKLQKWNLPANRNTIRLHNEFIQTECPHASAYYHAGMNTKVDAYTKERQLKIKDYFIKQIRAYMKGSTPKSTVVKSSKSSGSLPKKKGQTSKSNIGKTFDFNGLSINVWGTKWYYENNTFTCNARQGIITRVGSPFTTAPQAGVLFYGQTVTYNQVAVNPKEPFVWISWITNNGTEVWMPIEVLDSNNKIIEQWGTFGW"
 seq_length=len(prediction_sequence)
 protein = predict("", seq_length, svc)
 
-result = similarity_search(prediction_sequence, protein)
+result = similarity_search(prediction_sequence, protein, original)
+
+
 
 
 

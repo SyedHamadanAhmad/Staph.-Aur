@@ -12,7 +12,7 @@ app = Flask(__name__)
 CORS(app)
 
 # Preprocess data and train the model
-df, proteins, sequences, feature_vector = preprocess_data()
+original, df, proteins, sequences, feature_vector = preprocess_data()
 y_pred, y_test, svc = train_model(df)
 
 
@@ -38,14 +38,19 @@ def predict_protein():
 
 
 @app.route('/similarity_search', methods=['POST'])
-def similarity_serach():
-    data=request.json
-    target_sequence=data.get('target_sequence', '')
-    protein=cache[target_sequence]
-    similar_proteins=similarity_search(target_sequence, protein)
+def get_similar():
+    data = request.json
+    target_sequence = data.get('target_sequence', '')
+    protein = cache.get(target_sequence)
+
+    if protein is None:
+        return jsonify({"error": f"Target sequence '{target_sequence}' not found in cache"}), 400
+
+    similar_proteins = similarity_search(target_sequence, protein, original)
     return jsonify({'similarity search results': similar_proteins})
 
 
+
 # Running app
-if __name__ == '__main__':
-    app.run(debug=True)
+if __name__ == "__main__":
+    app.run(port=5000)

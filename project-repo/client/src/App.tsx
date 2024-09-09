@@ -6,13 +6,13 @@ interface PredictResponse {
 }
 
 interface SimilaritySearchResponse {
-  'similarity search results': [string, number][];
+  'similarity search results': [string, string, number][]; // [sequence, protein name, similarity score]
 }
 
 function App() {
   const [sequence, setSequence] = useState<string>('');
   const [prediction, setPrediction] = useState<string>('');
-  const [similarityResults, setSimilarityResults] = useState<[string, number][]>([]);
+  const [similarityResults, setSimilarityResults] = useState<[string, string, number][]>([]); // Updated to include protein names
   const [expandedSequenceIndex, setExpandedSequenceIndex] = useState<number | null>(null);
 
   const handleInputChange = (event: ChangeEvent<HTMLInputElement>) => {
@@ -83,28 +83,32 @@ function App() {
         </div>
       )}
 
-      {similarityResults.length > 0 && (
-        <div className="mt-6 bg-white p-4 rounded-lg shadow-md w-full max-w-md">
-          <h2 className="text-2xl font-semibold mb-2">Similarity Search Results:</h2>
-          <div className="overflow-x-auto">
-            <ul className="list-disc pl-5">
-              {similarityResults.map((result, index) => (
-                <li key={index} className="mb-2">
-                  <div className="flex flex-col items-start space-y-2">
-                    <button
-                      className="text-blue-500 hover:underline"
-                      onClick={() => handleSequenceClick(index)}
-                    >
-                      {expandedSequenceIndex === index ? result[0] : `${result[0].slice(0, 50)}...`}
-                    </button>
-                    <p className="text-sm text-gray-600">{result[1].toFixed(2)}%</p>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          </div>
-        </div>
-      )}
+{similarityResults.length > 0 && (
+  <div className="mt-6 bg-white p-4 rounded-lg shadow-md w-full max-w-md">
+    <h2 className="text-2xl font-semibold mb-2">Similarity Search Results:</h2>
+    <div className="overflow-x-auto">
+      <ul className="list-disc pl-5">
+        {similarityResults.map((result, index) => (
+          <li key={index} className="mb-2">
+            <div className="flex flex-col items-start space-y-2">
+              <button
+                className="text-blue-500 hover:underline"
+                onClick={() => handleSequenceClick(index)}
+              >
+                {expandedSequenceIndex === index
+                  ? result[0] // Show full sequence when clicked
+                  : `${result[0].slice(0, 50)}...`} {/* Show truncated sequence by default */}
+              </button>
+              <p className="text-sm text-gray-600">{result[1]}</p> {/* Protein Name */}
+              <p className="text-sm text-gray-600">{result[2].toFixed(2)}%</p> {/* Similarity Score */}
+            </div>
+          </li>
+        ))}
+      </ul>
+    </div>
+  </div>
+)}
+
     </div>
   );
 }
